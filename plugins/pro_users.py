@@ -129,13 +129,17 @@ async def remove_admin_command(client: Client, message: Message):
 
 #========================================================================#
 
-
 @Client.on_message(filters.command('premiumusers') & filters.private)
 async def admin_list_command(client: Client, message: Message):
     if message.from_user.id != OWNER_ID:
         return await message.reply_text("Only Owner can use this command...!")
 
     pro_user_ids = await client.mongodb.get_pros_list()
+    total_users = len(pro_user_ids)
+
+    if not pro_user_ids:
+        return await message.reply_text("<b>No premium users found.</b>")
+
     formatted_admins = []
 
     for user_id in pro_user_ids:
@@ -144,16 +148,21 @@ async def admin_list_command(client: Client, message: Message):
             full_name = user.first_name + (" " + user.last_name if user.last_name else "")
             username = f"@{user.username}" if user.username else "No Username"
             expiry_date = await client.mongodb.get_expiry_date(user_id)
-            status = f"(Expires: {expiry_date.strftime('%Y-%m-%d %H:%M:%S')})" if expiry_date else "(Permanent)"
-            formatted_admins.append(f"{full_name} - {username} {status}")
-        except Exception as e:
+            status = (
+                f"(Expires: {expiry_date.strftime('%Y-%m-%d %H:%M:%S')})"
+                if expiry_date else "(Permanent)"
+            )
+            formatted_admins.append(f"• {full_name} - {username} {status}")
+        except:
             continue
 
-    if formatted_admins:
-        await message.reply_text(
-            "<b>📊 Premium Users List:</b>\n\n" + "\n".join(formatted_admins),
-            disable_web_page_preview=True
-        )
-    else:
-        await message.reply_text("<b>No premium users found.</b>")
+    header = f"<b>📊 Premium Users List</b>\n"
+    header += f"<b>👥 Total Premium Users:</b> {total_users}\n\n"
 
+    full_text = header + "\n".join(formatted_admins)
+
+    #Split message to bypass Telegram limit
+    parts = split_text(full_text)
+
+    for part in parts:
+        await message.reply_text(part, disable_web_page_preview=True)
