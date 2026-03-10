@@ -75,7 +75,7 @@ async def start_command(client: Client, message: Message):
                         InlineKeyboardButton("ᴛᴜᴛᴏʀɪᴀʟ •", url=tutorial_link)
                     ],
                     [
-                        InlineKeyboardButton(" • ʙᴜʏ ᴘʀᴇᴍɪᴜᴍ •", url="https://t.me/Premium_Fliix/21")
+                        InlineKeyboardButton(" • ʙᴜʏ ᴘʀᴇᴍɪᴜᴍ •", url="https://t.me/automated_adminBOT")
                     ]
                 ])
             )
@@ -264,7 +264,7 @@ async def request_command(client: Client, message: Message):
     is_user_premium = await client.mongodb.is_pro(user_id)
 
     if is_admin or user_id == OWNER_ID:
-        await message.reply_text("🔹 **You are my sensei!**\nThis command is only for users.")
+        await message.reply_text("🔹 **You are my owner!**\nThis command is only for users.")
         return
 
     if not is_user_premium:
@@ -292,7 +292,7 @@ async def my_plan(client: Client, message: Message):
     is_admin = user_id in client.admins
 
     if is_admin or user_id == OWNER_ID:
-        await message.reply_text("🔹 You're my sensei! This command is only for users.")
+        await message.reply_text("🔹 You're my owner! This command is only for users.")
         return
 
     is_user_premium = await client.mongodb.is_pro(user_id)
@@ -312,5 +312,5 @@ async def my_plan(client: Client, message: Message):
             "🔸 Plan: Free\n"
             "🔸 Request: Disabled\n\n"
             "🔓 Unlock Premium to get more benefits\n"
-            "Contact: @GetoPro"
+            "Contact: @automated_adminBOT"
         )
