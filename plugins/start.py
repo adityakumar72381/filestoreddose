@@ -46,10 +46,17 @@ async def start_command(client: Client, message: Message):
         # 3. Check premium status
         is_user_pro = await client.mongodb.is_pro(user_id)
 
-        # ✅ Grant 24h premium after ads verification
-        if TEMP_PREMIUM_ENABLED and is_short_link and not is_user_pro and user_id != OWNER_ID:
-    expiry = datetime.now() + timedelta(hours=TEMP_PREMIUM_DURATION)
-    await client.mongodb.add_pro(user_id, expiry)
+        # ✅ Runtime → fallback to config → error if missing
+        try:
+            temp_enabled = getattr(client, "TEMP_PREMIUM_ENABLED", TEMP_PREMIUM_ENABLED)
+            temp_duration = getattr(client, "TEMP_PREMIUM_DURATION", TEMP_PREMIUM_DURATION)
+        except NameError:
+            return await message.reply("❌ Temp premium config not defined properly.")
+
+        # ✅ Apply temp premium
+        if temp_enabled and is_short_link and not is_user_pro and user_id != OWNER_ID:
+            expiry = datetime.now() + timedelta(hours=temp_duration)
+            await client.mongodb.add_pro(user_id, expiry)
 
         # 4. Check if shortner is enabled
         shortner_enabled = getattr(client, 'shortner_enabled', True)
@@ -202,15 +209,6 @@ async def start_command(client: Client, message: Message):
                     protect_content=client.protect
                 )
                 yugen_msgs.append(copied_msg)
-            except FloodWait as e:
-                await asyncio.sleep(e.x)
-                copied_msg = await msg.copy(
-                    chat_id=message.from_user.id,
-                    caption=caption,
-                    reply_markup=reply_markup,
-                    protect_content=client.protect
-                )
-                yugen_msgs.append(copied_msg)
             except Exception:
                 pass
 
@@ -255,63 +253,3 @@ async def start_command(client: Client, message: Message):
                 reply_markup=InlineKeyboardMarkup(buttons)
             )
         return
-
-#===============================================================#
-
-@Client.on_message(filters.command('request') & filters.private)
-async def request_command(client: Client, message: Message):
-    user_id = message.from_user.id
-    is_admin = user_id in client.admins
-    is_user_premium = await client.mongodb.is_pro(user_id)
-
-    if is_admin or user_id == OWNER_ID:
-        await message.reply_text("🔹 **You are my owner!**\nThis command is only for users.")
-        return
-
-    if not is_user_premium:
-        reply_markup = InlineKeyboardMarkup([
-            [InlineKeyboardButton("💎 Upgrade to Premium", url="https://t.me/hanime_arena/5")]
-        ])
-        await message.reply(
-            "❌ **You are not a premium user.**\nUpgrade to premium to access this feature.",
-            reply_markup=reply_markup
-        )
-        return
-
-    requested = " ".join(message.command[1:])
-    await client.send_message(
-        OWNER_ID,
-        f"📩 **New Request from {message.from_user.mention}**\n\n🆔 `{user_id}`\n📝 `{requested}`"
-    )
-    await message.reply("✅ **Thanks for your request!**")
-
-#===============================================================#
-
-@Client.on_message(filters.command('profile') & filters.private)
-async def my_plan(client: Client, message: Message):
-    user_id = message.from_user.id
-    is_admin = user_id in client.admins
-
-    if is_admin or user_id == OWNER_ID:
-        await message.reply_text("🔹 You're my owner! This command is only for users.")
-        return
-
-    is_user_premium = await client.mongodb.is_pro(user_id)
-
-    if is_user_premium:
-        await message.reply_text(
-            "**👤 Profile Information:**\n\n"
-            "🔸 Ads: Disabled\n"
-            "🔸 Plan: Premium\n"
-            "🔸 Request: Enabled\n\n"
-            "🌟 You're a Premium User!"
-        )
-    else:
-        await message.reply_text(
-            "**👤 Profile Information:**\n\n"
-            "🔸 Ads: Enabled\n"
-            "🔸 Plan: Free\n"
-            "🔸 Request: Disabled\n\n"
-            "🔓 Unlock Premium to get more benefits\n"
-            "Contact: @automated_adminBOT"
-        )
