@@ -26,6 +26,10 @@ SHORT_URL = "linkshortify.com"
 SHORT_API = ""
 SHORT_TUT = "https://t.me/How_to_Download_7x/26"
 
+# Temp Premium Settings
+TEMP_PREMIUM_ENABLED = True
+TEMP_PREMIUM_DURATION = 24  # in hours
+
 
 #========== DATABASE CONFIGURATION ==========
 DB_URI = "mongodb"
