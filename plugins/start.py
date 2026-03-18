@@ -47,9 +47,9 @@ async def start_command(client: Client, message: Message):
         is_user_pro = await client.mongodb.is_pro(user_id)
 
         # ✅ Grant 24h premium after ads verification
-        if is_short_link and not is_user_pro and user_id != OWNER_ID:
-            expiry = datetime.now() + timedelta(hours=24)
-            await client.mongodb.add_pro(user_id, expiry)
+        if TEMP_PREMIUM_ENABLED and is_short_link and not is_user_pro and user_id != OWNER_ID:
+    expiry = datetime.now() + timedelta(hours=TEMP_PREMIUM_DURATION)
+    await client.mongodb.add_pro(user_id, expiry)
 
         # 4. Check if shortner is enabled
         shortner_enabled = getattr(client, 'shortner_enabled', True)
