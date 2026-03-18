@@ -1,11 +1,8 @@
 from pyrogram import Client, filters
 from pyrogram.types import CallbackQuery, Message, InlineKeyboardButton, InlineKeyboardMarkup
-from config import MSG_EFFECT
-from config import OWNER_ID, ADMINS, TEMP_PREMIUM_ENABLED, TEMP_PREMIUM_DURATION, START_PHOTO
-
-from pyrogram import Client, filters
-from pyrogram.types import Message, InlineKeyboardMarkup, InlineKeyboardButton
 from pyrogram.errors.pyromod import ListenerTimeout
+
+from config import OWNER_ID, ADMINS, TEMP_PREMIUM_ENABLED, TEMP_PREMIUM_DURATION, MESSAGES
 
 #===============================================================#
 
@@ -380,36 +377,37 @@ async def unban(client: Client, message: Message):
     
         return await message.reply(f"**Error:** `{e}`")
 
-#==========================================================================#                
+
+#===============================================================#
+# ✅ ADMIN CHECK
 def is_admin(user_id):
     return user_id == OWNER_ID or user_id in ADMINS
 
 
+#===============================================================#
+# ✅ GET SETTINGS (RUNTIME + CONFIG FALLBACK)
 def get_temp_settings(client):
-    try:
-        enabled = getattr(client, "TEMP_PREMIUM_ENABLED", TEMP_PREMIUM_ENABLED)
-        duration = getattr(client, "TEMP_PREMIUM_DURATION", TEMP_PREMIUM_DURATION)
-        return enabled, duration
-    except NameError:
-        return None, None
+    enabled = getattr(client, "TEMP_PREMIUM_ENABLED", TEMP_PREMIUM_ENABLED)
+    duration = getattr(client, "TEMP_PREMIUM_DURATION", TEMP_PREMIUM_DURATION)
+    return enabled, duration
+
 
 #===============================================================#
+# ✅ TEMP PREMIUM PANEL
 
 @Client.on_message(filters.command("temp_premium") & filters.private)
 async def temp_premium_panel(client: Client, message: Message):
+
     if not is_admin(message.from_user.id):
         return await message.reply("❌ You are not allowed to use this.")
 
     enabled, duration = get_temp_settings(client)
 
-    if enabled is None:
-        return await message.reply("❌ Temp premium config not defined.")
-
     text = f"""<b>⚙️ Shortener Premium Configuration</b>
 
 <blockquote>
-This feature allows you to give temporary premium access 
-to users after completing the shortener task.
+This feature allows you to grant temporary premium access 
+after users complete the shortener verification.
 </blockquote>
 
 <b>📊 Current Settings</b>
@@ -425,7 +423,7 @@ to users after completing the shortener task.
         ]
     ])
 
-    photo = client.messages.get("START_PHOTO")
+    photo = MESSAGES.get("START_PHOTO")
 
     if photo:
         try:
@@ -437,16 +435,15 @@ to users after completing the shortener task.
 
 
 #===============================================================#
+# ✅ TOGGLE ACCESS
 
 @Client.on_callback_query(filters.regex("^temp_toggle$"))
 async def toggle_temp(client: Client, query: CallbackQuery):
+
     if not is_admin(query.from_user.id):
         return await query.answer("Not allowed", show_alert=True)
 
     enabled, duration = get_temp_settings(client)
-
-    if enabled is None:
-        return await query.message.edit_text("❌ Config not found.")
 
     client.TEMP_PREMIUM_ENABLED = not enabled
     enabled = client.TEMP_PREMIUM_ENABLED
@@ -474,9 +471,11 @@ Temporary premium access after shortener verification.
 
 
 #===============================================================#
+# ✅ CHANGE DURATION
 
 @Client.on_callback_query(filters.regex("^temp_duration$"))
 async def ask_duration(client: Client, query: CallbackQuery):
+
     if not is_admin(query.from_user.id):
         return await query.answer("Not allowed", show_alert=True)
 
@@ -493,9 +492,10 @@ async def ask_duration(client: Client, query: CallbackQuery):
 
         user_input = msg.text.strip()
 
-        # 🔥 DELETE USER MESSAGE (always)
+        # ✅ DELETE USER MESSAGE
         await msg.delete()
 
+        # ❌ INVALID INPUT
         if not user_input.isdigit():
             return await query.message.edit_text(
                 "<b>❌ Invalid Input</b>\n\n<blockquote>Please send a valid number (e.g., 12)</blockquote>"
@@ -503,12 +503,13 @@ async def ask_duration(client: Client, query: CallbackQuery):
 
         duration = int(user_input)
 
-        # Optional safety limit (recommended)
+        # ❌ RANGE VALIDATION
         if duration <= 0 or duration > 168:
             return await query.message.edit_text(
-                "<b>❌ Invalid Range</b>\n\n<blockquote>Allowed: 1 – 168 hours</blockquote>"
+                "<b>❌ Invalid Range</b>\n\n<blockquote>Allowed range: 1 – 168 hours</blockquote>"
             )
 
+        # ✅ UPDATE RUNTIME
         client.TEMP_PREMIUM_DURATION = duration
 
         enabled, _ = get_temp_settings(client)
@@ -537,5 +538,4 @@ Temporary premium access after shortener verification.
     except ListenerTimeout:
         await query.message.edit_text(
             "<b>⏰ Timeout</b>\n\n<blockquote>No input received.</blockquote>"
-        )
-        
+)
