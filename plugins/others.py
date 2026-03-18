@@ -1,6 +1,7 @@
 from pyrogram import Client, filters
 from pyrogram.types import CallbackQuery, Message, InlineKeyboardButton, InlineKeyboardMarkup
 from config import MSG_EFFECT
+from config import OWNER_ID, ADMINS, TEMP_PREMIUM_ENABLED, TEMP_PREMIUM_DURATION, START_PHOTO
 
 from pyrogram import Client, filters
 from pyrogram.types import Message, InlineKeyboardMarkup, InlineKeyboardButton
@@ -380,4 +381,123 @@ async def unban(client: Client, message: Message):
         return await message.reply(f"**Error:** `{e}`")
 
 #==========================================================================#                
+def is_admin(user_id):
+    return user_id == OWNER_ID or user_id in ADMINS
+
+
+def get_temp_settings(client):
+    try:
+        enabled = getattr(client, "TEMP_PREMIUM_ENABLED", TEMP_PREMIUM_ENABLED)
+        duration = getattr(client, "TEMP_PREMIUM_DURATION", TEMP_PREMIUM_DURATION)
+        return enabled, duration
+    except NameError:
+        return None, None
+
+#=========================================================================
+@Client.on_message(filters.command("temp_premium") & filters.private)
+async def temp_premium_panel(client: Client, message: Message):
+    if not is_admin(message.from_user.id):
+        return await message.reply("❌ You are not allowed to use this.")
+
+    enabled, duration = get_temp_settings(client)
+
+    if enabled is None:
+        return await message.reply("❌ Temp premium config not defined.")
+
+    text = f"""<b>shortner premium configuration</b>
+
+This is use to give a temporary access to all premium services for a specific time
+
+<b>Current settings</b>
+
+Tem premium enabled - {enabled}  
+TEMP PREMIUM DURATION = {duration} hrs
+"""
+
+    buttons = InlineKeyboardMarkup([
+        [
+            InlineKeyboardButton("Off access", callback_data="temp_toggle"),
+            InlineKeyboardButton("Change duration", callback_data="temp_duration")
+        ]
+    ])
+
+    if START_PHOTO:
+        await message.reply_photo(photo=START_PHOTO, caption=text, reply_markup=buttons)
+    else:
+        await message.reply(text, reply_markup=buttons)
+
+
+#===============================================================#
+
+@Client.on_callback_query(filters.regex("^temp_toggle$"))
+async def toggle_temp(client: Client, query: CallbackQuery):
+    if not is_admin(query.from_user.id):
+        return await query.answer("Not allowed", show_alert=True)
+
+    enabled, duration = get_temp_settings(client)
+
+    if enabled is None:
+        return await query.message.edit_text("❌ Config not found.")
+
+    client.TEMP_PREMIUM_ENABLED = not enabled
+
+    enabled = client.TEMP_PREMIUM_ENABLED
+
+    text = f"""<b>shortner premium configuration</b>
+
+This is use to give a temporary access to all premium services for a specific time
+
+<b>Current settings</b>
+
+Tem premium enabled - {enabled}  
+TEMP PREMIUM DURATION = {duration} hrs
+"""
+
+    buttons = InlineKeyboardMarkup([
+        [
+            InlineKeyboardButton("Off access", callback_data="temp_toggle"),
+            InlineKeyboardButton("Change duration", callback_data="temp_duration")
+        ]
+    ])
+
+    await query.message.edit_text(text, reply_markup=buttons)
+
+#===============================================================#
+
+@Client.on_callback_query(filters.regex("^temp_duration$"))
+async def ask_duration(client: Client, query: CallbackQuery):
+    if not is_admin(query.from_user.id):
+        return await query.answer("Not allowed", show_alert=True)
+
+    await query.message.edit_text("⏳ Send duration in hours (example: 12)")
+
+    try:
+        msg = await client.listen(query.message.chat.id, timeout=60)
+        duration = int(msg.text)
+
+        client.TEMP_PREMIUM_DURATION = duration
+
+        enabled, _ = get_temp_settings(client)
+
+        text = f"""<b>shortner premium configuration</b>
+
+This is use to give a temporary access to all premium services for a specific time
+
+<b>Current settings</b>
+
+Tem premium enabled - {enabled}  
+TEMP PREMIUM DURATION = {duration} hrs
+"""
+
+        buttons = InlineKeyboardMarkup([
+            [
+                InlineKeyboardButton("Off access", callback_data="temp_toggle"),
+                InlineKeyboardButton("Change duration", callback_data="temp_duration")
+            ]
+        ])
+
+        await query.message.edit_text(text, reply_markup=buttons)
+
+    except:
+        await query.message.edit_text("❌ Invalid input or timeout.")
 
