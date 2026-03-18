@@ -379,13 +379,13 @@ async def unban(client: Client, message: Message):
 
 
 #===============================================================#
-# ✅ ADMIN CHECK
+# ADMIN CHECK
 def is_admin(user_id):
     return user_id == OWNER_ID or user_id in ADMINS
 
 
 #===============================================================#
-# ✅ GET SETTINGS (RUNTIME + CONFIG FALLBACK)
+# GET SETTINGS
 def get_temp_settings(client):
     enabled = getattr(client, "TEMP_PREMIUM_ENABLED", TEMP_PREMIUM_ENABLED)
     duration = getattr(client, "TEMP_PREMIUM_DURATION", TEMP_PREMIUM_DURATION)
@@ -393,35 +393,44 @@ def get_temp_settings(client):
 
 
 #===============================================================#
-# ✅ TEMP PREMIUM PANEL
+# MESSAGE BUILDER (NO DUPLICATION)
+
+def build_temp_text(enabled, duration):
+    return f"""<b>sʜᴏʀᴛɴᴇʀ ᴘʀᴇᴍɪᴜᴍ ᴄᴏɴғɪɢᴜʀᴀᴛɪᴏɴ</b>
+
+<blockquote>
+ᴛʜɪs ғᴇᴀᴛᴜʀᴇ ᴀʟʟᴏᴡs ᴛᴇᴍᴘᴏʀᴀʀʏ ᴘʀᴇᴍɪᴜᴍ ᴀᴄᴄᴇss ᴀғᴛᴇʀ sʜᴏʀᴛɴᴇʀ ᴠᴇʀɪғɪᴄᴀᴛɪᴏɴ
+</blockquote>
+
+<b>ᴄᴜʀʀᴇɴᴛ sᴇᴛᴛɪɴɢs</b>
+
+• <b>sᴛᴀᴛᴜs:</b> {'ᴇɴᴀʙʟᴇᴅ' if enabled else 'ᴅɪsᴀʙʟᴇᴅ'}  
+• <b>ᴅᴜʀᴀᴛɪᴏɴ:</b> {duration} ʜᴏᴜʀs
+"""
+
+
+def build_buttons():
+    return InlineKeyboardMarkup([
+        [
+            InlineKeyboardButton("ᴛᴏɢɢʟᴇ ᴀᴄᴄᴇss", callback_data="temp_toggle"),
+            InlineKeyboardButton("ᴄʜᴀɴɢᴇ ᴅᴜʀᴀᴛɪᴏɴ", callback_data="temp_duration")
+        ]
+    ])
+
+
+#===============================================================#
+# PANEL
 
 @Client.on_message(filters.command("temp_premium") & filters.private)
 async def temp_premium_panel(client: Client, message: Message):
 
     if not is_admin(message.from_user.id):
-        return await message.reply("❌ You are not allowed to use this.")
+        return await message.reply("ɴᴏᴛ ᴀʟʟᴏᴡᴇᴅ")
 
     enabled, duration = get_temp_settings(client)
 
-    text = f"""<b>⚙️ Shortener Premium Configuration</b>
-
-<blockquote>
-This feature allows you to grant temporary premium access 
-after users complete the shortener verification.
-</blockquote>
-
-<b>📊 Current Settings</b>
-
-• <b>Status:</b> {'Enabled' if enabled else 'Disabled'}  
-• <b>Duration:</b> {duration} hours
-"""
-
-    buttons = InlineKeyboardMarkup([
-        [
-            InlineKeyboardButton("🔄 Toggle Access", callback_data="temp_toggle"),
-            InlineKeyboardButton("⏳ Change Duration", callback_data="temp_duration")
-        ]
-    ])
+    text = build_temp_text(enabled, duration)
+    buttons = build_buttons()
 
     photo = MESSAGES.get("START_PHOTO")
 
@@ -435,112 +444,86 @@ after users complete the shortener verification.
 
 
 #===============================================================#
-# ✅ TOGGLE ACCESS
+# TOGGLE
 
 @Client.on_callback_query(filters.regex("^temp_toggle$"))
 async def toggle_temp(client: Client, query: CallbackQuery):
 
     if not is_admin(query.from_user.id):
-        return await query.answer("Not allowed", show_alert=True)
+        return await query.answer("ɴᴏᴛ ᴀʟʟᴏᴡᴇᴅ", show_alert=True)
 
     enabled, duration = get_temp_settings(client)
 
     client.TEMP_PREMIUM_ENABLED = not enabled
     enabled = client.TEMP_PREMIUM_ENABLED
 
-    text = f"""<b>⚙️ Shortener Premium Configuration</b>
-
-<blockquote>
-Temporary premium access after shortener verification.
-</blockquote>
-
-<b>📊 Current Settings</b>
-
-• <b>Status:</b> {'Enabled' if enabled else 'Disabled'}  
-• <b>Duration:</b> {duration} hours
-"""
-
-    buttons = InlineKeyboardMarkup([
-        [
-            InlineKeyboardButton("🔄 Toggle Access", callback_data="temp_toggle"),
-            InlineKeyboardButton("⏳ Change Duration", callback_data="temp_duration")
-        ]
-    ])
-
-    await query.message.edit_text(text, reply_markup=buttons)
+    await query.message.edit_text(
+        build_temp_text(enabled, duration),
+        reply_markup=build_buttons()
+    )
 
 
 #===============================================================#
-# ✅ CHANGE DURATION
+# CHANGE DURATION
+
 @Client.on_callback_query(filters.regex("^temp_duration$"))
 async def ask_duration(client: Client, query: CallbackQuery):
 
     if not is_admin(query.from_user.id):
-        return await query.answer("Not allowed", show_alert=True)
+        return await query.answer("ɴᴏᴛ ᴀʟʟᴏᴡᴇᴅ", show_alert=True)
 
     await query.message.edit_text(
-        "<b>⏳ Send duration in hours</b>\n\n<blockquote>Example: 12</blockquote>"
+        "<b>sᴇɴᴅ ᴅᴜʀᴀᴛɪᴏɴ ɪɴ ʜᴏᴜʀs</b>\n\n<blockquote>ᴇxᴀᴍᴘʟᴇ: 12</blockquote>"
     )
 
     try:
-        # ✅ OLD STYLE (no filters)
-        msg = await client.listen(
-            query.message.chat.id,
-            timeout=60
-        )
+        while True:
+            msg = await client.listen(query.message.chat.id, timeout=60)
 
-        user_input = msg.text.strip()
+            # ❗ ignore old messages
+            if msg.id <= query.message.id:
+                continue
 
-        # ✅ DELETE USER MESSAGE ALWAYS
-        await msg.delete()
+            user_input = msg.text.strip()
 
-        # ❌ If command
-        if user_input.startswith("/"):
-            return await query.message.edit_text(
-                "<b>❌ Invalid Input</b>\n\n<blockquote>Commands are not allowed here. Send a number like 12</blockquote>"
-            )
+            # delete always
+            await msg.delete()
 
-        # ❌ If not number
-        if not user_input.isdigit():
-            return await query.message.edit_text(
-                "<b>❌ Invalid Input</b>\n\n<blockquote>Please send a valid number (e.g., 12)</blockquote>"
-            )
+            # ❌ command
+            if user_input.startswith("/"):
+                await query.message.edit_text(
+                    "<b>ɪɴᴠᴀʟɪᴅ ɪɴᴘᴜᴛ</b>\n\n<blockquote>sᴇɴᴅ ɴᴜᴍʙᴇʀ ᴏɴʟʏ</blockquote>"
+                )
+                continue
 
-        duration = int(user_input)
+            # ❌ not number
+            if not user_input.isdigit():
+                await query.message.edit_text(
+                    "<b>ɪɴᴠᴀʟɪᴅ ɪɴᴘᴜᴛ</b>\n\n<blockquote>sᴇɴᴅ ᴠᴀʟɪᴅ ɴᴜᴍʙᴇʀ</blockquote>"
+                )
+                continue
 
-        # ❌ Range validation
-        if duration <= 0 or duration > 168:
-            return await query.message.edit_text(
-                "<b>❌ Invalid Range</b>\n\n<blockquote>Allowed range: 1 – 168 hours</blockquote>"
-            )
+            duration = int(user_input)
 
-        # ✅ Update runtime
+            # ❌ range
+            if duration <= 0 or duration > 168:
+                await query.message.edit_text(
+                    "<b>ɪɴᴠᴀʟɪᴅ ʀᴀɴɢᴇ</b>\n\n<blockquote>1 - 168 ʜᴏᴜʀs ᴏɴʟʏ</blockquote>"
+                )
+                continue
+
+            break
+
+        # ✅ update
         client.TEMP_PREMIUM_DURATION = duration
-
         enabled, _ = get_temp_settings(client)
 
-        text = f"""<b>⚙️ Shortener Premium Configuration</b>
-
-<blockquote>
-Temporary premium access after shortener verification.
-</blockquote>
-
-<b>📊 Current Settings</b>
-
-• <b>Status:</b> {'Enabled' if enabled else 'Disabled'}  
-• <b>Duration:</b> {duration} hours
-"""
-
-        buttons = InlineKeyboardMarkup([
-            [
-                InlineKeyboardButton("🔄 Toggle Access", callback_data="temp_toggle"),
-                InlineKeyboardButton("⏳ Change Duration", callback_data="temp_duration")
-            ]
-        ])
-
-        await query.message.edit_text(text, reply_markup=buttons)
+        await query.message.edit_text(
+            build_temp_text(enabled, duration),
+            reply_markup=build_buttons()
+        )
 
     except ListenerTimeout:
         await query.message.edit_text(
-            "<b>⏰ Timeout</b>\n\n<blockquote>No input received.</blockquote>"
+            "<b>ᴛɪᴍᴇᴏᴜᴛ</b>\n\n<blockquote>ɴᴏ ɪɴᴘᴜᴛ ʀᴇᴄᴇɪᴠᴇᴅ</blockquote>"
         )
