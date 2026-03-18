@@ -393,7 +393,8 @@ def get_temp_settings(client):
     except NameError:
         return None, None
 
-#=========================================================================
+#===============================================================#
+
 @Client.on_message(filters.command("temp_premium") & filters.private)
 async def temp_premium_panel(client: Client, message: Message):
     if not is_admin(message.from_user.id):
@@ -404,25 +405,33 @@ async def temp_premium_panel(client: Client, message: Message):
     if enabled is None:
         return await message.reply("❌ Temp premium config not defined.")
 
-    text = f"""<b>shortner premium configuration</b>
+    text = f"""<b>⚙️ Shortener Premium Configuration</b>
 
-This is use to give a temporary access to all premium services for a specific time
+<blockquote>
+This feature allows you to give temporary premium access 
+to users after completing the shortener task.
+</blockquote>
 
-<b>Current settings</b>
+<b>📊 Current Settings</b>
 
-Tem premium enabled - {enabled}  
-TEMP PREMIUM DURATION = {duration} hrs
+• <b>Status:</b> {'Enabled' if enabled else 'Disabled'}  
+• <b>Duration:</b> {duration} hours
 """
 
     buttons = InlineKeyboardMarkup([
         [
-            InlineKeyboardButton("Off access", callback_data="temp_toggle"),
-            InlineKeyboardButton("Change duration", callback_data="temp_duration")
+            InlineKeyboardButton("🔄 Toggle Access", callback_data="temp_toggle"),
+            InlineKeyboardButton("⏳ Change Duration", callback_data="temp_duration")
         ]
     ])
 
-    if START_PHOTO:
-        await message.reply_photo(photo=START_PHOTO, caption=text, reply_markup=buttons)
+    photo = client.messages.get("START_PHOTO")
+
+    if photo:
+        try:
+            await message.reply_photo(photo=photo, caption=text, reply_markup=buttons)
+        except:
+            await message.reply(text, reply_markup=buttons)
     else:
         await message.reply(text, reply_markup=buttons)
 
@@ -440,27 +449,29 @@ async def toggle_temp(client: Client, query: CallbackQuery):
         return await query.message.edit_text("❌ Config not found.")
 
     client.TEMP_PREMIUM_ENABLED = not enabled
-
     enabled = client.TEMP_PREMIUM_ENABLED
 
-    text = f"""<b>shortner premium configuration</b>
+    text = f"""<b>⚙️ Shortener Premium Configuration</b>
 
-This is use to give a temporary access to all premium services for a specific time
+<blockquote>
+Temporary premium access after shortener verification.
+</blockquote>
 
-<b>Current settings</b>
+<b>📊 Current Settings</b>
 
-Tem premium enabled - {enabled}  
-TEMP PREMIUM DURATION = {duration} hrs
+• <b>Status:</b> {'Enabled' if enabled else 'Disabled'}  
+• <b>Duration:</b> {duration} hours
 """
 
     buttons = InlineKeyboardMarkup([
         [
-            InlineKeyboardButton("Off access", callback_data="temp_toggle"),
-            InlineKeyboardButton("Change duration", callback_data="temp_duration")
+            InlineKeyboardButton("🔄 Toggle Access", callback_data="temp_toggle"),
+            InlineKeyboardButton("⏳ Change Duration", callback_data="temp_duration")
         ]
     ])
 
     await query.message.edit_text(text, reply_markup=buttons)
+
 
 #===============================================================#
 
@@ -469,35 +480,62 @@ async def ask_duration(client: Client, query: CallbackQuery):
     if not is_admin(query.from_user.id):
         return await query.answer("Not allowed", show_alert=True)
 
-    await query.message.edit_text("⏳ Send duration in hours (example: 12)")
+    await query.message.edit_text(
+        "<b>⏳ Send duration in hours</b>\n\n<blockquote>Example: 12</blockquote>"
+    )
 
     try:
-        msg = await client.listen(query.message.chat.id, timeout=60)
-        duration = int(msg.text)
+        msg = await client.listen(
+            query.message.chat.id,
+            filters=filters.text & ~filters.command,
+            timeout=60
+        )
+
+        user_input = msg.text.strip()
+
+        # 🔥 DELETE USER MESSAGE (always)
+        await msg.delete()
+
+        if not user_input.isdigit():
+            return await query.message.edit_text(
+                "<b>❌ Invalid Input</b>\n\n<blockquote>Please send a valid number (e.g., 12)</blockquote>"
+            )
+
+        duration = int(user_input)
+
+        # Optional safety limit (recommended)
+        if duration <= 0 or duration > 168:
+            return await query.message.edit_text(
+                "<b>❌ Invalid Range</b>\n\n<blockquote>Allowed: 1 – 168 hours</blockquote>"
+            )
 
         client.TEMP_PREMIUM_DURATION = duration
 
         enabled, _ = get_temp_settings(client)
 
-        text = f"""<b>shortner premium configuration</b>
+        text = f"""<b>⚙️ Shortener Premium Configuration</b>
 
-This is use to give a temporary access to all premium services for a specific time
+<blockquote>
+Temporary premium access after shortener verification.
+</blockquote>
 
-<b>Current settings</b>
+<b>📊 Current Settings</b>
 
-Tem premium enabled - {enabled}  
-TEMP PREMIUM DURATION = {duration} hrs
+• <b>Status:</b> {'Enabled' if enabled else 'Disabled'}  
+• <b>Duration:</b> {duration} hours
 """
 
         buttons = InlineKeyboardMarkup([
             [
-                InlineKeyboardButton("Off access", callback_data="temp_toggle"),
-                InlineKeyboardButton("Change duration", callback_data="temp_duration")
+                InlineKeyboardButton("🔄 Toggle Access", callback_data="temp_toggle"),
+                InlineKeyboardButton("⏳ Change Duration", callback_data="temp_duration")
             ]
         ])
 
         await query.message.edit_text(text, reply_markup=buttons)
 
-    except:
-        await query.message.edit_text("❌ Invalid input or timeout.")
-
+    except ListenerTimeout:
+        await query.message.edit_text(
+            "<b>⏰ Timeout</b>\n\n<blockquote>No input received.</blockquote>"
+        )
+        
