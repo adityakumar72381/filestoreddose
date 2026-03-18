@@ -472,7 +472,6 @@ Temporary premium access after shortener verification.
 
 #===============================================================#
 # ✅ CHANGE DURATION
-
 @Client.on_callback_query(filters.regex("^temp_duration$"))
 async def ask_duration(client: Client, query: CallbackQuery):
 
@@ -484,18 +483,24 @@ async def ask_duration(client: Client, query: CallbackQuery):
     )
 
     try:
+        # ✅ OLD STYLE (no filters)
         msg = await client.listen(
             query.message.chat.id,
-            filters=filters.text & ~filters.command,
             timeout=60
         )
 
         user_input = msg.text.strip()
 
-        # ✅ DELETE USER MESSAGE
+        # ✅ DELETE USER MESSAGE ALWAYS
         await msg.delete()
 
-        # ❌ INVALID INPUT
+        # ❌ If command
+        if user_input.startswith("/"):
+            return await query.message.edit_text(
+                "<b>❌ Invalid Input</b>\n\n<blockquote>Commands are not allowed here. Send a number like 12</blockquote>"
+            )
+
+        # ❌ If not number
         if not user_input.isdigit():
             return await query.message.edit_text(
                 "<b>❌ Invalid Input</b>\n\n<blockquote>Please send a valid number (e.g., 12)</blockquote>"
@@ -503,13 +508,13 @@ async def ask_duration(client: Client, query: CallbackQuery):
 
         duration = int(user_input)
 
-        # ❌ RANGE VALIDATION
+        # ❌ Range validation
         if duration <= 0 or duration > 168:
             return await query.message.edit_text(
                 "<b>❌ Invalid Range</b>\n\n<blockquote>Allowed range: 1 – 168 hours</blockquote>"
             )
 
-        # ✅ UPDATE RUNTIME
+        # ✅ Update runtime
         client.TEMP_PREMIUM_DURATION = duration
 
         enabled, _ = get_temp_settings(client)
@@ -538,4 +543,4 @@ Temporary premium access after shortener verification.
     except ListenerTimeout:
         await query.message.edit_text(
             "<b>⏰ Timeout</b>\n\n<blockquote>No input received.</blockquote>"
-)
+        )
