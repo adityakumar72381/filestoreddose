@@ -1,7 +1,7 @@
 import requests
 import random
 import string
-from config import SHORT_URL, SHORT_API, MESSAGES
+from config import MESSAGES, SHORTNERS
 from pyrogram import Client, filters
 from pyrogram.types import Message, InlineKeyboardMarkup, InlineKeyboardButton, CallbackQuery, InputMediaPhoto
 from pyrogram.errors.pyromod import ListenerTimeout
@@ -10,40 +10,73 @@ from helper.helper_func import force_sub
 # ✅ In-memory cache
 shortened_urls_cache = {}
 
+# ✅ per-user shortener rotation cache
+user_shortner_cache = {}
+
 def generate_random_alphanumeric():
     characters = string.ascii_letters + string.digits
     return ''.join(random.choice(characters) for _ in range(8))
 
-def get_short(url, client):
+def get_short(url, client, user_id=None):
 
-    # Check if shortner is enabled
     shortner_enabled = getattr(client, 'shortner_enabled', True)
     if not shortner_enabled:
-        return url  # Return original URL if shortner is disabled
+        return url, 0
 
-    # Step 2: Check cache
+    # cache
     if url in shortened_urls_cache:
-        return shortened_urls_cache[url]
+        return shortened_urls_cache[url], 0
 
     try:
-        alias = generate_random_alphanumeric()
-        # Use dynamic shortner settings from client if available
-        short_url = getattr(client, 'short_url', SHORT_URL)
-        short_api = getattr(client, 'short_api', SHORT_API)
-        
-        api_url = f"https://{short_url}/api?api={short_api}&url={url}&alias={alias}"
-        response = requests.get(api_url)
-        rjson = response.json()
+        if not SHORTNERS:
+            print("[Shortener Error] SHORTNERS not configured")
+            return url, 0
 
-        if rjson.get("status") == "success" and response.status_code == 200:
-            short_url = rjson.get("shortenedUrl", url)
-            shortened_urls_cache[url] = short_url
-            return short_url
+        total = len(SHORTNERS)
+
+        # 🔥 starting index (per-user rotation)
+        if user_id:
+            start_index = user_shortner_cache.get(user_id, 0)
+            user_shortner_cache[user_id] = (start_index + 1) % total
+        else:
+            start_index = 0
+
+        # 🔥 FAILOVER LOOP
+        for i in range(total):
+            index = (start_index + i) % total
+            selected = SHORTNERS[index]
+
+            if "url" not in selected or "api" not in selected:
+                continue
+
+            short_url = selected["url"]
+            short_api = selected["api"]
+
+            try:
+                alias = generate_random_alphanumeric()
+                api_url = f"https://{short_url}/api?api={short_api}&url={url}&alias={alias}"
+
+                response = requests.get(api_url, timeout=8)
+                rjson = response.json()
+
+                if rjson.get("status") == "success" and response.status_code == 200:
+                    short_link = rjson.get("shortenedUrl", url)
+                    shortened_urls_cache[url] = short_link
+                    return short_link, index  # ✅ success
+
+                else:
+                    print(f"[Shortener Failed] {short_url} → {rjson}")
+
+            except Exception as e:
+                print(f"[Shortener Error] {short_url} → {e}")
+
+        # ❌ if all shorteners fail
+        print("[Shortener Error] All shorteners failed")
+
     except Exception as e:
-        print(f"[Shortener Error] {e}")
+        print(f"[Shortener Fatal Error] {e}")
 
-    return url  # fallback
-
+    return url, 0
 #===============================================================#
 
 @Client.on_message(filters.command('shortner') & filters.private)
