@@ -2,12 +2,12 @@ from helper.helper_func import *
 from pyrogram import Client, filters
 from pyrogram.types import Message, InlineKeyboardMarkup, InlineKeyboardButton
 import humanize
-from config import MSG_EFFECT, OWNER_ID
+from config import MSG_EFFECT, OWNER_ID, SHORTNERS
 from config import TEMP_PREMIUM_ENABLED, TEMP_PREMIUM_DURATION
 from plugins.shortner import get_short
 from helper.helper_func import get_messages, force_sub, decode, batch_auto_del_notification
 import asyncio
-from datetime import datetime, timedelta  # ✅ ADDED
+from datetime import datetime, timedelta
 
 #===============================================================#
 
@@ -16,7 +16,6 @@ from datetime import datetime, timedelta  # ✅ ADDED
 async def start_command(client: Client, message: Message):
     user_id = message.from_user.id
 
-    # 1. Add user if not present
     present = await client.mongodb.present_user(user_id)
     if not present:
         try:
@@ -24,7 +23,6 @@ async def start_command(client: Client, message: Message):
         except Exception as e:
             client.LOGGER(__name__, client.name).warning(f"Error adding a user:\n{e}")
 
-    # 2. Check if banned
     is_banned = await client.mongodb.is_banned(user_id)
     if is_banned:
         return await message.reply("**You have been banned from using this bot!**")
@@ -43,31 +41,26 @@ async def start_command(client: Client, message: Message):
         except IndexError:
             return await message.reply("Invalid command format.")
 
-        # 3. Check premium status
         is_user_pro = await client.mongodb.is_pro(user_id)
 
-        # ✅ Runtime → fallback to config → error if missing
         try:
             temp_enabled = getattr(client, "TEMP_PREMIUM_ENABLED", TEMP_PREMIUM_ENABLED)
             temp_duration = getattr(client, "TEMP_PREMIUM_DURATION", TEMP_PREMIUM_DURATION)
         except NameError:
             return await message.reply("❌ Temp premium config not defined properly.")
 
-        # ✅ Apply temp premium
         if temp_enabled and is_short_link and not is_user_pro and user_id != OWNER_ID:
             expiry = datetime.now() + timedelta(hours=temp_duration)
             await client.mongodb.add_pro(user_id, expiry)
 
-        # 4. Check if shortner is enabled
         shortner_enabled = getattr(client, 'shortner_enabled', True)
 
-        # 5. If user is not premium AND shortner is enabled, send short URL and return
         if not is_user_pro and user_id != OWNER_ID and not is_short_link and shortner_enabled:
             try:
-                short_link = get_short(
+                short_link, shortner_index = get_short(
                     f"https://t.me/{client.username}?start=yu3elk{base64_string}7",
                     client,
-                    user_id  # ✅ ONLY CHANGE
+                    user_id
                 )
             except Exception as e:
                 client.LOGGER(__name__, client.name).warning(f"Shortener failed: {e}")
@@ -75,7 +68,15 @@ async def start_command(client: Client, message: Message):
 
             short_photo = client.messages.get("SHORT_PIC", "")
             short_caption = client.messages.get("SHORT_MSG", "")
-            tutorial_link = getattr(client, 'tutorial_link', "https://t.me/How_to_Download_7x/26")
+
+            # ✅ Dynamic tutorial (synced with shortener)
+            if SHORTNERS and shortner_index < len(SHORTNERS):
+                tutorial_link = SHORTNERS[shortner_index].get(
+                    "tutorial",
+                    "https://t.me/How_to_Download_7x/26"
+                )
+            else:
+                tutorial_link = "https://t.me/How_to_Download_7x/26"
 
             await client.send_photo(
                 chat_id=message.chat.id,
@@ -91,9 +92,8 @@ async def start_command(client: Client, message: Message):
                     ]
                 ])
             )
-            return  # prevent sending actual files
+            return
 
-        # 6. Decode and prepare file IDs
         try:
             string = await decode(base64_string)
             argument = string.split("-")
@@ -164,7 +164,6 @@ async def start_command(client: Client, message: Message):
             client.LOGGER(__name__, client.name).warning(f"Error decoding base64: {e}")
             return await message.reply("⚠️ Invalid or expired link.")
 
-        # 7. Get messages from the specific source channel first
         temp_msg = await message.reply("Wait A Sec..")
         messages = []
 
