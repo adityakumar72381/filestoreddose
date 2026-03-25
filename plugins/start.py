@@ -64,7 +64,11 @@ async def start_command(client: Client, message: Message):
         # 5. If user is not premium AND shortner is enabled, send short URL and return
         if not is_user_pro and user_id != OWNER_ID and not is_short_link and shortner_enabled:
             try:
-                short_link = get_short(f"https://t.me/{client.username}?start=yu3elk{base64_string}7", client)
+                short_link = get_short(
+                    f"https://t.me/{client.username}?start=yu3elk{base64_string}7",
+                    client,
+                    user_id  # ✅ ONLY CHANGE
+                )
             except Exception as e:
                 client.LOGGER(__name__, client.name).warning(f"Shortener failed: {e}")
                 return await message.reply("Couldn't generate short link.")
