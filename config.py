@@ -21,11 +21,19 @@ API_HASH = "12345"
 MSG_EFFECT = 5046509860389126442
 
 
-#========== SHORTLINK SETTINGS ==========
-SHORT_URL = "linkshortify.com"
-SHORT_API = ""
-SHORT_TUT = "https://t.me/How_to_Download_7x/26"
-
+#========== MULTI SHORTNERS ==========
+SHORTNERS = [
+    {
+        "url": "linkshortify.com",
+        "api": "YOUR_API_1",
+        "tutorial": "https://t.me/tutorial1"
+    },
+    {
+        "url": "shareus.io",
+        "api": "YOUR_API_2",
+        "tutorial": "https://t.me/tutorial2"
+    }
+]
 # Temp Premium Settings
 TEMP_PREMIUM_ENABLED = True
 TEMP_PREMIUM_DURATION = 24  # in hours
