@@ -57,7 +57,7 @@ async def start_command(client: Client, message: Message):
 
         if not is_user_pro and user_id != OWNER_ID and not is_short_link and shortner_enabled:
             try:
-                short_link, shortner_index = get_short(
+                short_link, shortner_index = await get_short(
                     f"https://t.me/{client.username}?start=yu3elk{base64_string}7",
                     client,
                     user_id
