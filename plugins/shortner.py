@@ -20,23 +20,18 @@ def generate_random_alphanumeric():
 #===============================================================#
 
 async def get_short(url, client, user_id=None):
-
     shortner_enabled = getattr(client, 'shortner_enabled', True)
     if not shortner_enabled:
         return url, 0
 
-    # ✅ cache fix (store index also)
     if url in shortened_urls_cache:
         return shortened_urls_cache[url]
 
     try:
         if not SHORTNERS:
-            print("[Shortener Error] SHORTNERS not configured")
             return url, 0
 
         total = len(SHORTNERS)
-
-        # 🔥 per-user rotation
         if user_id:
             start_index = user_shortner_cache.get(user_id, 0)
             user_shortner_cache[user_id] = (start_index + 1) % total
@@ -44,74 +39,64 @@ async def get_short(url, client, user_id=None):
             start_index = 0
 
         async with httpx.AsyncClient() as client_http:
-
-            # 🔥 FAILOVER LOOP
             for i in range(total):
                 index = (start_index + i) % total
                 selected = SHORTNERS[index]
-
-                if "url" not in selected or "api" not in selected:
-                    continue
-
                 short_url = selected["url"]
                 short_api = selected["api"]
 
                 try:
                     alias = generate_random_alphanumeric()
                     api_url = f"https://{short_url}/api?api={short_api}&url={url}&alias={alias}"
-
                     response = await client_http.get(api_url, timeout=8)
-
-                    try:
-                        rjson = response.json()
-                    except:
-                        print(f"[Invalid JSON] {short_url}")
-                        continue
+                    rjson = response.json()
 
                     if rjson.get("status") == "success" and response.status_code == 200:
                         short_link = rjson.get("shortenedUrl", url)
-
-                        # ✅ store both link + index
                         shortened_urls_cache[url] = (short_link, index)
-
                         return short_link, index
-
-                    else:
-                        print(f"[Shortener Failed] {short_url} → {rjson}")
-
-                except Exception as e:
-                    print(f"[Shortener Error] {short_url} → {e}")
-
-        print("[Shortener Error] All shorteners failed")
-
-    except Exception as e:
-        print(f"[Shortener Fatal Error] {e}")
-
+                except:
+                    continue
+    except:
+        pass
     return url, 0
 
 #===============================================================#
 
 @Client.on_message(filters.command('shortner') & filters.private)
 async def shortner_command(client: Client, message: Message):
-
-    # ✅ admin + owner restriction
     if message.from_user.id != OWNER_ID and message.from_user.id not in ADMINS:
         return await message.reply("❌ Only admins can use this.")
-
     await shortner_panel(client, message)
+
+@Client.on_callback_query(filters.regex("^shortner$"))
+async def shortner_callback(client: Client, query: CallbackQuery):
+    if query.from_user.id != OWNER_ID and query.from_user.id not in ADMINS:
+        return await query.answer("❌ Admin only!", show_alert=True)
+    await query.answer()
+    await shortner_panel(client, query)
+
+@Client.on_callback_query(filters.regex("^toggle_shortner$"))
+async def toggle_shortner_callback(client: Client, query: CallbackQuery):
+    if query.from_user.id != OWNER_ID and query.from_user.id not in ADMINS:
+        return await query.answer("❌ Admin only!", show_alert=True)
+    
+    # Toggle the status
+    current = getattr(client, 'shortner_enabled', True)
+    client.shortner_enabled = not current
+    
+    status_text = "ENABLED ✅" if client.shortner_enabled else "DISABLED ❌"
+    await query.answer(f"Shortener is now {status_text}", show_alert=False)
+    await shortner_panel(client, query)
 
 #===============================================================#
 
 async def check_shortner_status(client_http, s, enabled):
-    url = s.get("url")
-    api = s.get("api")
-
     if not enabled:
         return "✗ ᴅɪsᴀʙʟᴇᴅ"
-
     try:
         test = await client_http.get(
-            f"https://{url}/api?api={api}&url=https://google.com&alias=test",
+            f"https://{s.get('url')}/api?api={s.get('api')}&url=https://google.com&alias=test{random.randint(1,999)}",
             timeout=5
         )
         return "✓ ᴡᴏʀᴋɪɴɢ" if test.status_code == 200 else "✗ ɴᴏᴛ ᴡᴏʀᴋɪɴɢ"
@@ -121,9 +106,11 @@ async def check_shortner_status(client_http, s, enabled):
 #===============================================================#
 
 async def shortner_panel(client, query_or_message):
-
     shortner_enabled = getattr(client, 'shortner_enabled', True)
-    enabled_text = "✓ ᴇɴᴀʙʟᴇᴅ" if shortner_enabled else "✗ ᴅɪsᴀʙʟᴇᴅ"
+    
+    # UI Formatting
+    enabled_text = "✅ ᴇɴᴀʙʟᴇᴅ" if shortner_enabled else "❌ ᴅɪsᴀʙʟᴇᴅ"
+    toggle_btn_text = "ᴛᴜʀɴ ᴏғғ 🔴" if shortner_enabled else "ᴛᴜʀɴ ᴏɴ 🟢"
 
     msg = f"""<blockquote>✦ 𝗦𝗛𝗢𝗥𝗧𝗡𝗘𝗥 𝗦𝗘𝗧𝗧𝗜𝗡𝗚𝗦</blockquote>
 **ᴄᴜʀʀᴇɴᴛ ꜱᴇᴛᴛɪɴɢꜱ:**
@@ -131,22 +118,15 @@ async def shortner_panel(client, query_or_message):
 """
 
     async with httpx.AsyncClient() as client_http:
-
-        # ✅ parallel calls
         tasks = [check_shortner_status(client_http, s, shortner_enabled) for s in SHORTNERS]
         statuses = await asyncio.gather(*tasks)
 
     for i, (s, status) in enumerate(zip(SHORTNERS, statuses), start=1):
-        url = s.get("url")
-        api = s.get("api")
-        tutorial = s.get("tutorial")
-
         msg += f"""
 <blockquote>
 #shortner{i}
-›› ꜱʜᴏʀᴛɴᴇʀ ᴜʀʟ: `{url}`
-›› ꜱʜᴏʀᴛɴᴇʀ ᴀᴘɪ: `****{api[-6:]}`
-›› ᴛᴜᴛᴏʀɪᴀʟ ʟɪɴᴋ: `{tutorial}`
+›› ꜱʜᴏʀᴛɴᴇʀ ᴜʀʟ: `{s.get("url")}`
+›› ꜱʜᴏʀᴛɴᴇʀ ᴀᴘɪ: `****{s.get("api")[-6:]}`
 ›› ꜱᴛᴀᴛᴜꜱ: {status}
 </blockquote>
 """
@@ -154,17 +134,20 @@ async def shortner_panel(client, query_or_message):
     msg += "\n<blockquote>≡ ᴜꜱᴇ ᴛʜᴇ ʙᴜᴛᴛᴏɴꜱ ʙᴇʟᴏᴡ</blockquote>"
 
     reply_markup = InlineKeyboardMarkup([
+        [InlineKeyboardButton(toggle_btn_text, 'toggle_shortner')],
         [InlineKeyboardButton('• ᴛᴇꜱᴛ ꜱʜᴏʀᴛɴᴇʀ •', 'choose_test')],
         [InlineKeyboardButton('◂ ʙᴀᴄᴋ', 'settings')]
     ])
 
     image_url = MESSAGES.get("SHORT")
 
-    if hasattr(query_or_message, 'message'):
+    # If it's a callback, edit the current message
+    if isinstance(query_or_message, CallbackQuery):
         await query_or_message.message.edit_media(
             media=InputMediaPhoto(media=image_url, caption=msg),
             reply_markup=reply_markup
         )
+    # If it's a command, send a new photo message
     else:
         await query_or_message.reply_photo(photo=image_url, caption=msg, reply_markup=reply_markup)
 
@@ -172,11 +155,9 @@ async def shortner_panel(client, query_or_message):
 
 @Client.on_callback_query(filters.regex("^choose_test$"))
 async def choose_test(client, query: CallbackQuery):
-
     buttons = []
     for i in range(len(SHORTNERS)):
         buttons.append([InlineKeyboardButton(f"Test Shortner {i+1}", callback_data=f"test_{i}")])
-
     buttons.append([InlineKeyboardButton("◂ Back", callback_data="shortner")])
 
     await query.message.edit_text(
@@ -188,49 +169,26 @@ async def choose_test(client, query: CallbackQuery):
 
 @Client.on_callback_query(filters.regex(r"^test_(\d+)$"))
 async def test_shortner(client: Client, query: CallbackQuery):
-
     index = int(query.data.split("_")[1])
-
-    if index >= len(SHORTNERS):
-        return await query.answer("Invalid shortner", show_alert=True)
-
     s = SHORTNERS[index]
-    url = s["url"]
-    api = s["api"]
-
-    await query.message.edit_text(f"🔄 Testing Shortner {index+1}...")
+    
+    await query.message.edit_text(f"🔄 Testing Shortner {index+1} ({s['url']})...")
 
     async with httpx.AsyncClient() as client_http:
         try:
-            alias = generate_random_alphanumeric()
-            api_url = f"https://{url}/api?api={api}&url=https://google.com&alias={alias}"
-
+            api_url = f"https://{s['url']}/api?api={s['api']}&url=https://google.com&alias=test{generate_random_alphanumeric()}"
             response = await client_http.get(api_url, timeout=10)
-
-            try:
-                rjson = response.json()
-            except:
-                return await query.message.edit_text("❌ Invalid JSON response")
+            rjson = response.json()
 
             if rjson.get("status") == "success":
-                short_link = rjson.get("shortenedUrl", "")
-                msg = f"""✅ SUCCESS
-
-URL: `{url}`
-Short Link: `{short_link}`"""
+                msg = f"✅ **SUCCESS**\n\nURL: `{s['url']}`\nShort Link: `{rjson.get('shortenedUrl')}`"
             else:
-                msg = f"""❌ FAILED
-
-URL: `{url}`
-Error: `{rjson.get("message")}`"""
-
+                msg = f"❌ **FAILED**\n\nURL: `{s['url']}`\nError: `{rjson.get('message')}`"
         except Exception as e:
-            msg = f"""❌ ERROR
-
-URL: `{url}`
-Error: `{str(e)}`"""
+            msg = f"❌ **ERROR**\n\nURL: `{s['url']}`\nError: `{str(e)}`"
 
     await query.message.edit_text(
         msg,
         reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("◂ Back", callback_data="shortner")]])
-                 )
+    )
+    
