@@ -190,5 +190,61 @@ We are simplifying the settings to keep the platform lean and reduce dependencie
 The goal is a "Social-Free, Plan-Free" environment where the focus is entirely on link shortening and CPM-based payouts through the simplified withdrawal system.
 
 
+# Final Admin Option Refinements
+
+This document covers the final cleanup of the Admin Panel, focusing on removing unused integrations, security bloat, and redundant system settings.
+
+## ⚙️ Final Module Cleanup
+
+We are further stripping down the admin interface to keep only the absolute essentials for platform operation.
+
+### General Reductions
+* **Cronjob:** **KEEP IT**. Essential for automated system tasks.
+* **Social Media:** **REMOVE IT**. No external social link management required.
+* **Blog:** **REMOVE IT**. (Confirming removal of all blog-related settings).
+
+---
+
+## 🔒 Security & Integrations
+
+Streamlining the backend by removing complex security layers and unnecessary external API connections.
+
+* **Security:** **REMOVE IT**. We will handle security at the infrastructure/code level rather than through a dedicated admin module.
+* **Captcha:** **KEEP IT**. Necessary for bot prevention during signup and link access.
+* **Integration:** **REMOVE IT**. (Specifically removing internal/external API integrations that do not serve the core shortener logic).
+
+---
+
+## 🛠️ System User & Membership Settings
+
+The registration and membership flow is being simplified to a single-path system.
+
+* **Ads/UI Related:** **REMOVE**. (Cleaning up UI-based ad toggles).
+* **Toggle Registration:** **KEEP**. The option to enable or disable new user signups remains necessary.
+* **Membership Options:** **REMOVE**. Since there are no "Plans," the membership tier system is no longer needed.
+* **Bonus (Signup):** **REMOVE**. Referral or signup bonuses are deprecated.
+
+---
+
+## 📉 Earnings & Localization Cleanup
+
+Removing redundant display options and non-essential localization settings.
+
+### Earnings Settings
+* **Remove "Links":** Clean up link-specific earnings display settings.
+* **Remove Design:** Remove visual customization settings for earnings reports.
+
+### Localization & General
+* **Language:** **REMOVE**. The platform will support **English Only**.
+* **Currency Selection:** **REMOVE**. (Fixed currency for payouts).
+* **General Settings:**
+    * **Maintenance Mode:** **KEEP**. Ability to lock the site for updates.
+    * **Maintenance Message:** **KEEP**. Custom text for users during downtime.
+
+---
+
+## 🏁 Summary of Final Build
+The goal of these refinements is to achieve a "Zero-Configuration" feel for the end-user, where the admin manages only the **Cronjobs, Captcha, Registration Toggle,** and **Maintenance Status**.
+
 
 
