@@ -4,6 +4,7 @@ A streamlined URL shortening platform designed for efficient link management, us
 
 ## 📌 Project Overview
 Our goal is to build a new, custom script that leverages existing management logic while introducing a specialized frontend and ad-revenue workflow by modifying existing adlinkfly 
+we are removing all logics realted to thr the traffic flow like views dinec we will make a separat script for that  like which can be controlled by a blog site adlinkly focus on user management, statistics ans manual withdrawal by publishers where i will pay manually.
 
 ### Core Functions
 * **Management:** Use established logic to manage users, links, statistics, and core data features.
@@ -95,7 +96,7 @@ This section outlines the refinements for the administrative interface, focusing
 The dashboard is being simplified to prioritize essential platform statistics over secondary data.
 
 ### Features to Remove:
-* **Owner Earnings:** Hide/Remove tracking for owner-specific revenue.
+* **Owner Earnings:** Hide/Remove tracking for owner-specific revenue whcih is not used now .
 * **Referral Earnings:** Remove all referral-related data points.
 
 ### Statistics Logic:
@@ -124,7 +125,8 @@ The following routes are to be **removed**:
 * `/admin/options/payout-popup`
 
 ### New Logic:
-* **Single Ad Format:** The platform will utilize only **one single type of ad format**.
+* **Single Ad Format:** The platform will utilize only **one single type of ad format**
+* `/admin/options/payout` ( In this we can manually setup prices cpm for each countries)
 * **Fixed Selection:** Ad types will no longer be "selectable" by users; the system will enforce a global format for all.
 
 ---
