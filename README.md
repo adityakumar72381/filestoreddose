@@ -1,187 +1,194 @@
-# MODIFICATION GUIDE: MEMBER DASHBOARD & CORE LOGIC
+# Custom Link Shortener Project
 
-## 1. REMOVE REFERRAL SYSTEM (Member Side)
-Goal: Eliminate all traces of referral earnings to keep the dashboard clean.
+A streamlined URL shortening platform designed for efficient link management, user monetization, and simplified administration.
 
-- FIND FILE: src/Template/Member/Dashboard/index.twig
-  - ACTION: Locate the statistics widgets. Remove the <div> or box containing "Referral Earnings".
-  - ACTION: Remove any progress bars or charts related to "Referral Views".
+## 📌 Project Overview
+Our goal is to build a new, custom script that leverages existing management logic while introducing a specialized frontend and ad-revenue workflow by modifying existing adlinkfly 
 
-- FIND FILE: src/Template/Layout/member.twig (or sidebar.twig)
-  - ACTION: Locate the navigation menu. Delete the <li> item for "Referrals" (/member/users/referrals).
+### Core Functions
+* **Management:** Use established logic to manage users, links, statistics, and core data features.
+* 
+## 💰 Monetization Workflow (How it Works)
+The platform follows a straightforward path for users to generate revenue:
+1.  **Shorten:** User generates a shortened link.
+2.  **Share:** User shares the link on their platform.
+3.  **Click:** A visitor clicks the link.
+4.  **Safe-Link:** The visitor is forwarded to a "SafeLink" blog site where ads are displayed.
+5.  **Destination:** The visitor receives the final destination link.
+6.  **Payout:** Admin earns revenue; the user who shortened the link is paid based on a **CPM (Cost Per Mille)** model.
 
-- FIND FILE: src/Controller/Member/UsersController.php
-  - ACTION: Find the 'referrals' function and comment it out or delete it to disable the route.
+---
 
-## 2. SIMPLIFY PUBLISHER RATES (General)
-Goal: Replace complex multi-ad formats with a single fixed-rate system.
+## 🛠️ UI/UX Redesign Plans
 
-- FIND FILE: src/Template/Pages/payout_rates.twig
-  - ACTION: Remove columns for "Banner", "Interstitial", and "Popup". 
-  - ACTION: Create a single column titled "CPM Rate (per 1000 views)".
-  - EXAMPLE: Set a fixed value row (e.g., United States -> $2.00).
+### 1. Member Dashboard (`/member/dashboard`)
+We are refining the user experience by simplifying the dashboard:
+* **Keep existing core features** to maintain familiarity.
+* **Remove Referral Earnings** functionality.
+* **Remove Route:** Access to `/member/users/referrals` will be disabled completely
 
-- ADMIN PANEL CONFIGURATION:
-  - Go to Settings -> Ad Types.
-  - Disable all ad types except for the "Native/Direct" one that matches your safelink flow.
+### 2. Public Home Page (site.com/)
+The home page will be redesigned to focus on four primary navigation points:
+* **Home:** General landing page.
+* **Publisher Rates:** Transparent payout information.
+* **Portal:** Unified Login/Signup/Dashboard access.
 
-## 3. URL STRUCTURE & ROUTING
-Goal: Clean up the URL paths for a "compressed" feel.
+---
 
-- HOME PAGE: Should only link to:
-  - Home (/)
-  - Publisher Rates (/payout-rates)
-  - Login/Signup (If not authenticated)
-  - Dashboard (/member/dashboard - If authenticated)
+## 📊 Payout Structure (Publisher Rates)
+Publisher rates represent the amount paid to users for every **1,000 views** generated on their links.
 
-- BLOG REMOVAL: 
-  - Delete or hide any "Blog" buttons in the navigation. 
-  - The script should now only serve as a management tool for the external safelink blog.
+* **Fixed Rates:** Unlike complex scripts with multiple formats, we will implement a **single, unified publisher rate** across the site for clarity.
+* **Example:** * **United States:** $2.00 per 1,000 views.
 
-## 4. STATISTICS CLEANUP
-- ACTION: In the Dashboard Controller, modify the query to sum only "Publisher Earnings" and "Link Views". 
-- ACTION: Set the "Referral Earnings" variable to 0 in the controller so no data is pulled from the database for referrals.
+---
+
+# Site Navigation & Routing Map
+
+This document defines the URL structure and the primary navigation menu layout for the frontend.
+
+## 🛣️ Page Routes
+
+The following table maps the site pages to their respective application routes:
+
+| Page Name          | Endpoint Route         |
+| :----------------- | :--------------------- |
+| **Home** | `/`                    |
+| **Dashboard** | `/member/dashboard`    |
+| **Login** | `/auth/signin`         |
+| **Signup** | `/auth/signup`         |
+| **Privacy Policy** | `/pages/privacy`       |
+| **Terms of Use** | `/pages/terms`         |
+| **DMCA** | `/pages/dmca`          |
+| **Publisher Rates**| `/pages/payout-rates`  |
+
+---
+
+## 📱 Menu Structure
+
+The navigation menu is designed to be clean, with essential links visible and legal pages grouped into a dropdown.
+
+### Primary Links
+* **Home**
+* **Publishers Rates**
+* **Dashboard** (Toggle: Show **Login/Signup** if the user is not authenticated)
+
+### "Important Pages" Dropdown
+To simplify the UI, the following pages are combined into a single menu button:
+* **Terms of Use**
+* **Privacy Policy**
+* **DMCA**
+* *Dynamic Links:* Any additional pages created via the **Admin Panel**.
+
+---
+
+## 🛠️ Development Notes
+* **Blog System:** The blog system has been deprecated and should be removed from the code (No longer needed).
+* **Route Grouping:** All legal/informational pages are nested under the `/pages/` prefix for better organization.
+
+# Admin Panel & Backend Configuration
+
+This section outlines the refinements for the administrative interface, focusing on core functionality while removing unnecessary complex features.
+
+## 🖥️ Admin Dashboard Refinement (`/admin/dashboard`)
+
+The dashboard is being simplified to prioritize essential platform statistics over secondary data.
+
+### Features to Remove:
+* **Owner Earnings:** Hide/Remove tracking for owner-specific revenue.
+* **Referral Earnings:** Remove all referral-related data points.
+
+### Statistics Logic:
+* Statistics should represent a global view of all users.
+* **Combined View:** Integrate **Publisher Earnings** and **Total Views** into a unified statistical overview that covers the entire user base.
+
+---
+
+## 🔗 Link Management (`/admin/links`)
+
+We are maintaining the primary link oversight while keeping the interface clean.
+
+* **Active Links:** Keep `/admin/links` as the primary management hub.
+* **Hidden/Inactive Links:** Retain `/admin/links/hidden` and `/admin/links/inactive` for administrative control and moderation.
+
+---
+
+## 💸 Payout & Ad Format Restructuring
+
+We are deprecating the old multi-format payout system in favor of a single, streamlined ad model.
+
+### Route Cleanup:
+The following routes are to be **removed**:
+* `/admin/options/payout-interstitial`
+* `/admin/options/payout-banner`
+* `/admin/options/payout-popup`
+
+### New Logic:
+* **Single Ad Format:** The platform will utilize only **one single type of ad format**.
+* **Fixed Selection:** Ad types will no longer be "selectable" by users; the system will enforce a global format for all.
+
+---
+
+## 👥 User & Withdrawal Management
+
+Streamlining how users are handled and how payments are distributed.
+
+### Withdrawals:
+* **Keep as is:** Retain `/admin/withdraws` and `/admin/withdraws/export` for processing payments.
+
+### User Routes:
+* **Keep:** `/admin/users` (Primary list) and `/admin/users/add` (or export) for user database management.
+* **Remove:** `/admin/users/referrals` — As previously noted, the referral system is entirely removed from the project scope.
 
 
-# MODIFICATION GUIDE: FRONTEND NAVIGATION & URL STRUCTURE
+# Admin Feature Cleanup & System Settings
 
-## 1. MENU RE-ORGANIZATION (Header/Navigation)
-Goal: Create a clean, compressed menu with a dropdown for "Important Pages."
+This document outlines the final removal of legacy modules and the configuration of the core system options.
 
-- FIND FILE: src/Template/Element/front_header.twig (or header.twig)
-  - ACTION: Remove the existing "Blog" list item (<li>).
-  - ACTION: Organize the main links as follows:
-    1. Home -> /
-    2. Publishers Rates -> /pages/payout-rates
-    3. Dashboard (if logged in) -> /member/dashboard
-    4. Login/Signup (if guest) -> /auth/signin & /auth/signup
-  
-- ACTION: Create a Dropdown Button titled "Important Pages"
-  - Inside the dropdown, add links for:
-    - Terms of Use -> /pages/terms
-    - Privacy Policy -> /pages/privacy
-    - DMCA -> /pages/dmca
-    - Dynamic Pages: Ensure the code for "other pages from admin panel" remains inside this dropdown loop.
+## 🚫 Deprecated Modules (To Be Removed)
 
-## 2. BLOG SYSTEM REMOVAL
-Goal: Completely disable the internal blog to save resources.
+We are stripping away features that are not required for our current business model to ensure a lightweight and focused admin panel.
 
-- FIND FOLDER: src/Template/Posts/
-  - ACTION: You can delete this folder or keep it but ensure no links point to it.
-  
-- FIND FILE: config/routes.php
-  - ACTION: Search for routes containing '/blog' or 'Posts' and comment them out using '//'. This prevents users from accessing those pages even if they type the URL.
+### 1. Plans & Invoices
+* **Routes to Remove:** `/admin/plans` and `/admin/plans/add`.
+* **Reasoning:** Since the platform will not be collecting money directly from publishers, these subscription/plan routes are obsolete.
+* **Invoices:** All `/admin/invoices` routes are also unusable and should be removed.
 
-## 3. URL REDIRECTS (Routing)
-Goal: Ensure the paths match your requested clean structure.
+### 2. Content & UI Management
+* **Blog/Posts:** Remove `/admin/posts` and `/admin/posts/add` (Blog system deprecated).
+* **Testimonials:** Remove the testimonials module.
+* **Menu Manager:** Remove the custom menu manager.
+* **System Options:** Remove `/admin/options/system`.
 
-- PATH: /auth/signin  -> Ensure this points to UsersController::login
-- PATH: /auth/signup  -> Ensure this points to UsersController::register
-- PATH: /member/dashboard -> Ensure this is the default landing page after login.
+---
 
-## 4. FOOTER SIMPLIFICATION
-- FIND FILE: src/Template/Element/front_footer.twig
-  - ACTION: Match the footer links to your new "Important Pages" structure. 
-  - ACTION: Remove the "Latest Posts" or "Blog" sections from the footer area.
+## 🛠️ Features to Retain
 
-## 5. ADMIN PANEL "PAGES" SECTION
-- Goal: Keep the ability to add custom pages, but make sure they automatically appear in the "Important Pages" dropdown you created in Step 1.
+The following core modules will remain active to support site operations:
+
+* **Static Pages:** Keep `/admin/pages` and `/admin/pages/add` to manage the "Important Pages" (Terms, Privacy, DMCA).
+* **Announcements:** Keep the announcement system active for user communication.
+* **Advanced Stats:** Keep `/admin/advanced/statistics`.
+
+---
+
+## ⚙️ System Options Configuration (`/admin/options/`)
+
+We are simplifying the settings to keep the platform lean and reduce dependencies.
+
+| Option Path | Action | Logic / Reason |
+| :--- | :--- | :--- |
+| `/admin/options/ads` | **REMOVE** | Ad management on the core script is no longer needed. |
+| `/admin/options/social-login` | **REMOVE** | Keep login simple and native; social login is not required. |
+| `/admin/options/payment` | **REMOVE** | No payments are being collected from users. |
+| `/admin/options/withdraw` | **KEEP** | Necessary for managing publisher payouts. |
+| `/admin/options/email` | **KEEP** | Required for system notifications and account recovery. |
+
+---
+
+## 📝 Final Development Note
+The goal is a "Social-Free, Plan-Free" environment where the focus is entirely on link shortening and CPM-based payouts through the simplified withdrawal system.
 
 
-# MODIFICATION GUIDE: ADMIN PANEL SIMPLIFICATION
-
-## 1. ADMIN DASHBOARD STATS (/admin/dashboard)
-Goal: Simplify the stats to show only combined totals.
-
-- FIND FILE: src/Template/Admin/Dashboard/index.twig
-  - ACTION: Remove the widget for "Owner Earnings".
-  - ACTION: Remove the widget for "Referral Earnings".
-  - ACTION: Create/Modify a central widget that displays "Total Views" and "Total Publisher Earnings" (combined for all users).
-
-## 2. LINK MANAGEMENT (/admin/links)
-Goal: Keep management but clean up the view.
-
-- KEEP AS IS: 
-  - /admin/links (List all links)
-  - /admin/links/hidden (View hidden links)
-  - /admin/links/inactive (View inactive links)
-
-## 3. PAYOUT & AD TYPE OVERHAUL
-Goal: Remove the "User Choice" for ad formats and consolidate into one system.
-
-- FIND FILE: src/Template/Admin/Options/payout.twig
-  - ACTION: Remove the entire "Interstitial", "Banner", and "Popup" selection logic.
-  - ACTION: Modify the page to only have a single input for the "Default CPM Rate".
-  
-- ACTION: REMOVE THE FOLLOWING ROUTES/FILES:
-  - /admin/options/payout-interstitial
-  - /admin/options/payout-banner
-  - /admin/options/payout-popup
-  - NOTE: Users should NOT be able to choose their ad type. Force the "Direct" flow globally.
-
-## 4. USER & WITHDRAWAL MANAGEMENT
-Goal: Keep the core financial distribution system.
-
-- KEEP AS IS:
-  - /admin/withdraws (Manage payments)
-  - /admin/withdraws/export (Financial reporting)
-  - /admin/users (Manage site members)
-  - /admin/users/add (Manually add users)
-  - /admin/users/export (Export user data)
-
-- REMOVE/DISABLE:
-  - /admin/users/referrals
-  - ACTION: Delete any links in the sidebar pointing to "Referral Management".
-
-## 5. REVENUE LOGIC SIMPLIFICATION
-Goal: Focus only on what you pay the publishers.
-
-- FIND FILE: src/Controller/Admin/DashboardController.php
-  - ACTION: In the data fetching logic, comment out the code that calculates "Referral Profits" or "Owner Net Profit". 
-  - ACTION: Ensure the "Total Earnings" variable only reflects the sum of Publisher Earnings to keep the dashboard simple and accurate to your business model.
-
-# MODIFICATION GUIDE: SYSTEM SETTINGS & MODULE REMOVAL
-
-## 1. REMOVE SUBSCRIPTION & BILLING (Advertiser System)
-Goal: Delete the "Plans" and "Invoices" logic as users do not pay for services.
-
-- REMOVE/DISABLE ROUTES:
-  - /admin/plans and /admin/plans/add
-  - /admin/invoices (Not usable since no money comes from publishers)
-
-- FIND FILE: src/Template/Layout/admin.twig
-  - ACTION: Locate and delete the sidebar menu items for "Plans" and "Invoices".
-
-## 2. CONTENT & SOCIAL CLEANUP
-Goal: Remove extra marketing features and external login bloat.
-
-- REMOVE BLOG/POSTS:
-  - /admin/posts and /admin/posts/add
-  - ACTION: Delete "Posts" from the sidebar menu.
-
-- REMOVE TESTIMONIALS & MENU MANAGER:
-  - /admin/testimonials (No need for reviews)
-  - /admin/menu-manager (Menu will be hardcoded/simplified in step 2)
-
-- KEEP: 
-  - Announcements (Useful for notifying users of updates)
-  - Pages List/Add (/admin/pages) for your Terms/Privacy/DMCA.
-
-## 3. ADVANCED SETTINGS SIMPLIFICATION
-Goal: Disable unneeded options and social logins.
-
-- REMOVE FROM ADMIN SETTINGS:
-  - /admin/options/ads (Since you don't show ads on the shortener itself)
-  - /admin/options/social-login (Keep it simple with standard email login)
-  - /admin/options/payment (No payment gateways needed from user to admin)
-
-- KEEP:
-  - /admin/advanced/statistics (Core feature)
-  - /admin/options/system (Basic site settings)
-  - /admin/options/withdraw (To set how you pay users)
-  - /admin/options/email (Required for password resets/notifications)
-
-## 4. DASHBOARD CLEANUP (Member & Admin)
-- ACTION: Ensure no "Buy Traffic" or "Add Funds" buttons appear in the Member dashboard, as these are now defunct.
 
 
